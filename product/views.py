@@ -1,12 +1,13 @@
+
 from django.shortcuts import render
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework import permissions, status
 from .models import Product
-from .serializers import ProductSerializer
+from user.permissions import IsAuthenticatedorRegistedMoreThanThreeDaysUser
+from .serializers import ProductSerializer, ProductDetailSerializer
 from django.utils import timezone
 from django.db.models.query_utils import Q
-
 
 # 제품 관련 기능
 class ProductView(APIView):
@@ -47,6 +48,16 @@ class ProductView(APIView):
         return Response(product_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
-from django.shortcuts import render
+class ProductDetailView(APIView):
+    permission_classes = [IsAuthenticatedorRegistedMoreThanThreeDaysUser]
 
-# Create your views here.
+    # 상품 상세 보기
+    def get(self, request):
+        user = request.user  # 현재 로그인한 유저
+        show_now_at = timezone.now()  # 현재 시간
+
+        query = Q(author=user) | (Q(show_end_at__gte=show_now_at))
+        products = Product.objects.filter(query)
+
+        return Response(ProductDetailSerializer(products, many=True).data)
+
